@@ -254,7 +254,7 @@ class resnet(CoupleNet):
             # approach for loading part of the state dict
             model_dict = resnet.state_dict()
             model_dict.update(state_dict)
-            model.load_state_dict(model_dict)
+            resnet.load_state_dict(model_dict)
 
             # resnet.load_state_dict({k:v for k,v in state_dict.items() if k in resnet.state_dict()})
 
