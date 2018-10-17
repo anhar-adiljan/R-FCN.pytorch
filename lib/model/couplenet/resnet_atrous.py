@@ -247,9 +247,9 @@ class resnet(CoupleNet):
             state_dict = torch.load(model_path)
 
             # pop the fc layer weights from state_dict
-            for k, v in state_dict.items():
-                if 'fc' in k:
-                    state_dict.pop(k)
+            keys_to_pop = [k for k in state_dict.keys() if 'fc' in k]
+            for k in keys_to_pop:
+                del state_dict[k]
 
             resnet.load_state_dict({k:v for k,v in state_dict.items() if k in resnet.state_dict()})
 
