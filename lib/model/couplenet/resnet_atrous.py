@@ -239,7 +239,8 @@ class resnet(CoupleNet):
         import model
         model_repo_path = os.path.dirname(os.path.dirname(os.path.dirname(model.__file__)))
 
-        model_path = os.path.join(model_repo_path, 'data/pretrained_model/resnet{}_rcnn.pth'.format(self.num_layers))
+        # model_path = os.path.join(model_repo_path, 'data/pretrained_model/resnet{}_rcnn.pth'.format(self.num_layers))
+        model_path = os.path.join(model_repo_path, 'data/pretrained_model/resnet{}_nih-pretrained.pth'.format(self.num_layers))
 
         if self.pretrained:
             print("Loading pretrained weights from %s" % model_path)
