@@ -245,6 +245,12 @@ class resnet(CoupleNet):
         if self.pretrained:
             print("Loading pretrained weights from %s" % model_path)
             state_dict = torch.load(model_path)
+
+            # pop the fc layer weights from state_dict
+            for k, v in state_dict.items():
+                if 'fc' in k:
+                    state_dict.pop(k)
+
             resnet.load_state_dict({k:v for k,v in state_dict.items() if k in resnet.state_dict()})
 
         # Build resnet.
