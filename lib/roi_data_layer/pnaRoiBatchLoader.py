@@ -6,7 +6,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import torch.utils.data as data
+from torch.utils.data import Dataset
 import pydicom
 import torch
 
@@ -19,7 +19,7 @@ import random
 import time
 import pdb
 
-class roibatchLoader(data.Dataset):
+class roibatchLoader(Dataset):
   def __init__(self, roidb, ratio_list, ratio_index, batch_size, num_classes, training=True, normalize=None):
     self._roidb = roidb
     self._num_classes = num_classes
