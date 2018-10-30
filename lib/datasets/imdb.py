@@ -3,7 +3,9 @@
 # Copyright (c) 2015 Microsoft
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Ross Girshick and Xinlei Chen
+# Modified by Adilijiang (Adil) Ainihaer
 # --------------------------------------------------------
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -107,30 +109,55 @@ class imdb(object):
         """
         raise NotImplementedError
 
+    def _get_width_by_index(self, image_idx):
+        """Returns width of the image associated with the given index."""
+        return PIL.Image.open(self.image_path_at(image_idx)).size[0]
+
     def _get_widths(self):
+        """Returns widths of all images in the database."""
         return [PIL.Image.open(self.image_path_at(i)).size[0]
                 for i in range(self.num_images)]
 
+    def _get_box_coords(self, boxes):
+        """Returns copies of the coordinates of the given boxes."""
+        x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+        return x1.copy(), y1.copy(), x2.copy(), y2.copy()
+
+    def _compute_flipped_coords(self, width, old_x1, old_x2):
+        """Returns the new coordinates of boxes after horizontal flip."""
+        new_x1 = width - old_x2 - 1
+        new_x2 = width - old_x1 - 1
+        return new_x1, new_x2
+
+    def _flip_image_boxes(self, image_idx):
+        """Horizontally flip boxes associated with image at given index."""
+        width = self._get_width_by_index(image_idx)
+        boxes = self.roidb[image_idx]['boxes'].copy()
+        x1, _, x2, _ = self._get_box_coords(boxes)
+        boxes[:, 0], boxes[:, 2] = self._compute_flipped_coords(width, x1, x2)
+        assert (boxes[:, 2] >= boxes[:, 0]).all()
+        return boxes
+
+    def _create_flipped_entry(self, image_idx):
+        """Returns a dictionary representing an RoI flipped entry."""
+        boxes = self._flip_image_boxes(image_idx)
+        gt_overlaps = self.roidb[image_idx]['gt_overlaps']
+        gt_classes = self.roidb[image_idx]['gt_classes']
+        flipped = True
+        return {'boxes': boxes, 'gt_overlaps': gt_overlaps,
+                'gt_classes': gt_classes, 'flipped': True}
+
+    def _add_roidb_flipped_entry(self, image_idx):
+        """Adds a flipped entry to the RoI database."""
+        entry = self._create_flipped_entry(image_idx)
+        self.roidb.append(entry)
+
     def append_flipped_images(self):
+        """Adds flipped images to the image database."""
         num_images = self.num_images
-        widths = self._get_widths()
         for i in range(num_images):
-            boxes = self.roidb[i]['boxes'].copy()
-
-            oldx1 = boxes[:, 0].copy()
-            oldx2 = boxes[:, 2].copy()
-
-            boxes[:, 0] = widths[i] - oldx2 - 1
-            boxes[:, 2] = widths[i] - oldx1 - 1
-
-            assert (boxes[:, 2] >= boxes[:, 0]).all()
-
-            entry = {'boxes': boxes,
-                   'gt_overlaps': self.roidb[i]['gt_overlaps'],
-                   'gt_classes': self.roidb[i]['gt_classes'],
-                   'flipped': True}
-
-            self.roidb.append(entry)
+            self._add_roidb_flipped_entry(i)
+        # Expand image indices by factor of 2 after adding all flipped images.
         self._image_index = self._image_index * 2
 
     def evaluate_recall(self, candidate_boxes=None, thresholds=None,
