@@ -15,7 +15,7 @@ import os.path as osp
 import PIL
 from model.utils.cython_bbox import bbox_overlaps
 import numpy as np
-import scipy.sparse
+import scipy.sparse as sparse
 from model.utils.config import cfg
 import pdb
 
@@ -273,7 +273,7 @@ class imdb(object):
             I = np.where(maxes > 0)[0]
             overlaps[I, gt_classes[argmaxes[I]]] = maxes[I]
 
-        overlaps = scipy.sparse.csr_matrix(overlaps)
+        overlaps = sparse.csr_matrix(overlaps)
         roidb.append({
             'boxes': boxes,
             'gt_classes': np.zeros((num_boxes,), dtype=np.int32),
@@ -285,16 +285,21 @@ class imdb(object):
         return roidb
 
     @staticmethod
+    def merge_roidb_entry(a, b):
+        """Merges two roidb entries into one and returns the merged entry."""
+        a['boxes'] = np.vstack((a['boxes'], b['boxes']))
+        a['gt_classes'] = np.hstack((a['gt_classes'], b['gt_classes']))
+        a['gt_overlaps'] = sparse.vstack([['gt_overlaps'], b['gt_overlaps']])
+        a['seg_areas'] = np.hstack((a['seg_areas'], b['seg_areas']))
+        return a
+
+    @staticmethod
     def merge_roidbs(a, b):
+        """Merges two roidbs into one and returns the merged db."""
         assert len(a) == len(b)
+        # Iterates through the two dbs and merged each pair of entries.
         for i in range(len(a)):
-            a[i]['boxes'] = np.vstack((a[i]['boxes'], b[i]['boxes']))
-            a[i]['gt_classes'] = np.hstack((a[i]['gt_classes'],
-                                            b[i]['gt_classes']))
-            a[i]['gt_overlaps'] = scipy.sparse.vstack([a[i]['gt_overlaps'],
-                                                       b[i]['gt_overlaps']])
-            a[i]['seg_areas'] = np.hstack((a[i]['seg_areas'],
-                                           b[i]['seg_areas']))
+            a[i] = imdb.merge_roidb_entry(a[i], b[i])
         return a
 
     def competition_mode(self, on):
