@@ -254,34 +254,44 @@ class imdb(object):
         return {'ar': ar, 'recalls': recalls, 'thresholds': thresholds,
                 'gt_overlaps': gt_overlaps}
 
+    def _calculate_overlaps_from_gt_roidb(self, overlaps, boxes, gt_roidb_entry):
+        gt_boxes = gt_roidb_entry['boxes']
+        gt_classes = gt_roidb_entry['classes']
+        gt_overlaps = bbox_overlaps(boxes.astype(np.float),
+                                    gt_boxes.astype(np.float))
+
+        argmaxes = gt_overlaps.argmax(axis=1)
+        maxes = gt_overlaps.max(axis=1)
+        I = np.where(maxes > 0)[0]
+        overlaps[I, gt_classes[argmaxes[I]]] = maxes[I]
+        return overlaps
+
+    def _create_roidb_entry_from_box_list(self, index, box_list, gt_roidb):
+        boxes = box_list[index]
+        num_boxes = boxes.shape[0]
+
+        overlaps = np.zeros((num_boxes, self.num_classes), dtype=np.float32)
+        if gt_roidb is not None and gt_roidb[index]['boxes'].size > 0:
+            overlaps = self._calculate_overlaps_from_gt_roidb(overlaps, boxes, gt_roidb[index])
+        overlaps = sparse.csr_matrix(overlaps)
+
+        roidb_entry = {
+            'boxes': boxes,
+            'gt_classes': np.zeros((num_boxes,), dtype=np.int32),
+            'gt_overlaps': overlaps,
+            'flipped': False,
+            'seg_areas': np.zeros((num_boxes,), dtype=np.float32)
+        }
+
+        return roidb_entry
+
     def create_roidb_from_box_list(self, box_list, gt_roidb):
         assert len(box_list) == self.num_images, \
             'Number of boxes must match number of ground-truth images'
         roidb = []
         for i in range(self.num_images):
-            boxes = box_list[i]
-            num_boxes = boxes.shape[0]
-            overlaps = np.zeros((num_boxes, self.num_classes), dtype=np.float32)
-
-        if gt_roidb is not None and gt_roidb[i]['boxes'].size > 0:
-            gt_boxes = gt_roidb[i]['boxes']
-            gt_classes = gt_roidb[i]['gt_classes']
-            gt_overlaps = bbox_overlaps(boxes.astype(np.float),
-                                        gt_boxes.astype(np.float))
-            argmaxes = gt_overlaps.argmax(axis=1)
-            maxes = gt_overlaps.max(axis=1)
-            I = np.where(maxes > 0)[0]
-            overlaps[I, gt_classes[argmaxes[I]]] = maxes[I]
-
-        overlaps = sparse.csr_matrix(overlaps)
-        roidb.append({
-            'boxes': boxes,
-            'gt_classes': np.zeros((num_boxes,), dtype=np.int32),
-            'gt_overlaps': overlaps,
-            'flipped': False,
-            'seg_areas': np.zeros((num_boxes,), dtype=np.float32),
-        })
-
+            roidb_entry = self._create_roidb_entry_from_box_list(i, box_list, gt_roidb)
+            roidb.append(roidb_entry)
         return roidb
 
     @staticmethod
