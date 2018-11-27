@@ -19,7 +19,7 @@ class RoIAlignFunction(Function):
         batch_size, num_channels, data_height, data_width = features.size()
         num_rois = rois.size(0)
 
-        output = features.new(num_rois, num_channels, self.aligned_height, self.aligned_width).zero_()
+        output = features.new_zeros((num_rois, num_channels, self.aligned_height, self.aligned_width))
         if features.is_cuda:
             roi_align.roi_align_forward_cuda(self.aligned_height,
                                              self.aligned_width,
@@ -30,7 +30,6 @@ class RoIAlignFunction(Function):
                                         self.aligned_width,
                                         self.spatial_scale, features,
                                         rois, output)
-#            raise NotImplementedError
 
         return output
 
@@ -39,13 +38,10 @@ class RoIAlignFunction(Function):
 
         batch_size, num_channels, data_height, data_width = self.feature_size
 
-        grad_input = self.rois.new(batch_size, num_channels, data_height,
-                                  data_width).zero_()
+        grad_input = self.rois.new_zeros((batch_size, num_channels, data_height, data_width))
         roi_align.roi_align_backward_cuda(self.aligned_height,
                                           self.aligned_width,
                                           self.spatial_scale, grad_output,
                                           self.rois, grad_input)
-
-        # print grad_input
 
         return grad_input, None
