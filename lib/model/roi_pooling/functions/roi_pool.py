@@ -10,12 +10,16 @@ class RoIPoolFunction(Function):
         ctx.spatial_scale = spatial_scale
         ctx.feature_size = None
 
+    @staticmethod
     def forward(ctx, features, rois): 
         ctx.feature_size = features.size()           
         batch_size, num_channels, data_height, data_width = ctx.feature_size
         num_rois = rois.size(0)
-        output = features.new(num_rois, num_channels, ctx.pooled_height, ctx.pooled_width).zero_()
-        ctx.argmax = features.new(num_rois, num_channels, ctx.pooled_height, ctx.pooled_width).zero_().int()
+
+        output_size = (num_rois, num_channels, ctx.pooled_height, ctx.pooled_width)
+        output = features.new_zeros(output_size)
+        ctx.argmax = features.new_zeros(output_size, dtype=torch.int)
+
         ctx.rois = rois
         if not features.is_cuda:
             _features = features.permute(0, 2, 3, 1)
@@ -27,10 +31,11 @@ class RoIPoolFunction(Function):
 
         return output
 
+    @staticmethod
     def backward(ctx, grad_output):
         assert(ctx.feature_size is not None and grad_output.is_cuda)
         batch_size, num_channels, data_height, data_width = ctx.feature_size
-        grad_input = grad_output.new(batch_size, num_channels, data_height, data_width).zero_()
+        grad_input = grad_output.new_zeros((batch_size, num_channels, data_height, data_width))
 
         roi_pooling.roi_pooling_backward_cuda(ctx.pooled_height, ctx.pooled_width, ctx.spatial_scale,
                                               grad_output, ctx.rois, grad_input, ctx.argmax)
