@@ -20,7 +20,8 @@ class RoICropFunction(Function):
         if not input1.is_cuda:
             roi_crop.BilinearSamplerBHWD_updateOutput(input1, input2, output)
         else:
-            output = output.cuda(self.device)
+            device_name = torch.cuda.get_device_name(self.device)
+            output = output.cuda(device=torch.device(device_name))
             roi_crop.BilinearSamplerBHWD_updateOutput_cuda(input1, input2, output)
         return output
 
@@ -31,7 +32,8 @@ class RoICropFunction(Function):
         if not grad_output.is_cuda:
             roi_crop.BilinearSamplerBHWD_updateGradInput(self.input1, self.input2, grad_input1, grad_input2, grad_output)
         else:
-            grad_input1 = grad_input1.cuda(self.device)
-            grad_input2 = grad_input2.cuda(self.device)
+            device_name = torch.cuda.get_device_name(self.device)
+            grad_input1 = grad_input1.cuda(torch.device(device_name))
+            grad_input2 = grad_input2.cuda(torch.device(device_name))
             roi_crop.BilinearSamplerBHWD_updateGradInput_cuda(self.input1, self.input2, grad_input1, grad_input2, grad_output)
         return grad_input1, grad_input2

@@ -8,14 +8,14 @@ class RoICropFunction(Function):
     def forward(self, input1, input2):
         self.input1 = input1.clone()
         self.input2 = input2.clone()
-        output = input2.new(input2.size()[0], input1.size()[1], input2.size()[1], input2.size()[2]).zero_()
+        output = input2.new_zeros(input2.size()[0], input1.size()[1], input2.size()[1], input2.size()[2])
         assert output.get_device() == input1.get_device(), "output and input1 must on the same device"
         assert output.get_device() == input2.get_device(), "output and input2 must on the same device"
         roi_crop.BilinearSamplerBHWD_updateOutput_cuda(input1, input2, output)
         return output
 
     def backward(self, grad_output):
-        grad_input1 = self.input1.new(self.input1.size()).zero_()
-        grad_input2 = self.input2.new(self.input2.size()).zero_()
+        grad_input1 = self.input1.new_zeros(self.input1.size())
+        grad_input2 = self.input2.new_zeros(self.input2.size())
         roi_crop.BilinearSamplerBHWD_updateGradInput_cuda(self.input1, self.input2, grad_input1, grad_input2, grad_output)
         return grad_input1, grad_input2
